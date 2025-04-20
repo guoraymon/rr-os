@@ -3,13 +3,14 @@
 
 mod console;
 mod sbi;
+mod sys;
 
 core::arch::global_asm!(include_str!("entry.asm"));
 
 #[no_mangle]
 fn rust_main() {
     println!("Hello, world!");
-    loop {}
+    sys::shutdown(false);
 }
 
 #[panic_handler]
