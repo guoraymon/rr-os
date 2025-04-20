@@ -1,0 +1,7 @@
+[workspace]
+members = [
+    "os",
+    "user_lib",
+    "app/bad_address",
+    "app/hello_world",
+]
