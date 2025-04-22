@@ -4,6 +4,7 @@ ELF = $(BUILD_DIR)/os
 
 QEMU = qemu-system-riscv64
 GDB = riscv64-unknown-elf-gdb
+OBJDUMP = riscv64-unknown-elf-objdump
 
 all: run
 
@@ -33,6 +34,10 @@ gdb:
 	$(GDB) \
 		-ex 'file $(ELF)' \
 		-ex 'set arch riscv:rv64' \
-		-ex 'target remote localhost:1234'
+		-ex 'target remote localhost:1234' \
+		-x debug.gdb
 		
-.PHONY: all build run clean debug gdb
+dump: build
+	$(OBJDUMP) -d $(ELF)
+
+.PHONY: all build run clean debug gdb dump

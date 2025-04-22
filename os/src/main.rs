@@ -1,20 +1,21 @@
 #![no_std]
 #![no_main]
+#![feature(naked_functions)]
+
+core::arch::global_asm!(include_str!("entry.S"));
 
 mod console;
 mod sbi;
 mod sys;
 mod trap;
 
-core::arch::global_asm!(include_str!("entry.S"));
-
 #[link_section = ".data"]
 #[no_mangle]
 pub static APP_0: [u8; include_bytes!(
-    "../../app/sample/target/riscv64gc-unknown-none-elf/release/sample.bin"
+    "../../app/hello_world/target/riscv64gc-unknown-none-elf/release/hello_world.bin"
 )
 .len()] = *include_bytes!(
-    "../../app/sample/target/riscv64gc-unknown-none-elf/release/sample.bin"
+    "../../app/hello_world/target/riscv64gc-unknown-none-elf/release/hello_world.bin"
 );
 
 #[no_mangle]
