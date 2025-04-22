@@ -4,11 +4,10 @@
 pub mod console;
 mod syscall;
 
-use syscall::sys_exit;
-
 #[no_mangle]
+#[link_section = ".text.entry"]
 fn _start() -> ! {
-    sys_exit(main());
+    syscall::sys_exit(main());
     unreachable!();
 }
 
