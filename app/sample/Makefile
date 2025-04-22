@@ -1,9 +1,27 @@
-all: build binary run
+TARGET = riscv64gc-unknown-none-elf
+BUILD_DIR = target/$(TARGET)/release
+ELF = $(BUILD_DIR)/sample
+BIN = $(BUILD_DIR)/sample.bin
+
+QEMU = qemu-riscv64
+OBJCOPY = riscv64-unknown-elf-objcopy
+OBJDUMP = riscv64-unknown-elf-objdump
+
+all: run
+
 build:
 	cargo build --release
 
-binary:
-	riscv64-unknown-elf-objcopy -O binary target/riscv64gc-unknown-none-elf/release/sample target/riscv64gc-unknown-none-elf/release/sample.bin
+run: build
+	$(QEMU) $(ELF)
 
-run:
-	qemu-riscv64 target/riscv64gc-unknown-none-elf/release/sample
+clean:
+	cargo clean
+
+bin: build
+	$(OBJCOPY) -O binary $(ELF) $(BIN)
+
+dump: build
+	$(OBJDUMP) -d $(ELF)
+
+.PHONY: all build run clean bin dump

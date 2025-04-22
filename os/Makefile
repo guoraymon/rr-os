@@ -1,26 +1,38 @@
+TARGET = riscv64gc-unknown-none-elf
+BUILD_DIR = target/$(TARGET)/release
+ELF = $(BUILD_DIR)/os
+
+QEMU = qemu-system-riscv64
+GDB = riscv64-unknown-elf-gdb
+
 all: run
 
 build:
 	cargo build --release
 
 run: build
-	qemu-system-riscv64 \
+	$(QEMU) \
 		-machine virt \
 		-nographic \
 		-bios default \
-		-kernel target/riscv64gc-unknown-none-elf/release/os \
+		-kernel $(ELF) \
 		-d in_asm -D qemu.log
 
+clean:
+	cargo clean
+
 debug: build
-	qemu-system-riscv64 \
+	$(QEMU) \
 		-machine virt \
 		-nographic \
 		-bios default \
-		-kernel target/riscv64gc-unknown-none-elf/release/os \
+		-kernel $(ELF) \
 		-s -S
 
 gdb:
-	riscv64-unknown-elf-gdb \
-		-ex 'file target/riscv64gc-unknown-none-elf/release/os' \
+	$(GDB) \
+		-ex 'file $(ELF)' \
 		-ex 'set arch riscv:rv64' \
 		-ex 'target remote localhost:1234'
+		
+.PHONY: all build run clean debug gdb
