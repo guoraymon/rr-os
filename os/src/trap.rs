@@ -3,7 +3,7 @@ use core::arch::asm;
 use crate::{print, println, sys};
 
 pub fn init() {
-    let stvec_val = (trap_handler as usize & !0x3) | 0x1;
+    let stvec_val = trap_handler as usize;
     unsafe {
         asm!("csrw stvec, {}", in(reg) stvec_val);
     }
@@ -54,10 +54,10 @@ fn trap_entry() {
         asm!("mv {0}, a7", out(reg) syscall_id);
         asm!("mv {0}, ra", out(reg) ra);
     }
-    println!(
-        "[kernel] syscall_id: {:#x}, arg0: {:#x}, arg1: {:#x}, arg2: {:#x}, ra: {:#x}",
-        syscall_id, arg0, arg1, arg2, ra
-    );
+    // println!(
+    //     "[kernel] syscall_id: {:#x}, arg0: {:#x}, arg1: {:#x}, arg2: {:#x}, ra: {:#x}",
+    //     syscall_id, arg0, arg1, arg2, ra
+    // );
 
     let mut scause: usize; // 异常原因寄存器 Supervisor Cause Register
     let mut stval: usize; // 异常相关值寄存器 Supervisor Trap Value Register
@@ -69,10 +69,10 @@ fn trap_entry() {
             out(reg) stval
         );
     }
-    println!(
-        "[kernel] TrapHandler called, scause: {:#x}, stval: {:#x}",
-        scause, stval
-    );
+    // println!(
+    //     "[kernel] TrapHandler called, scause: {:#x}, stval: {:#x}",
+    //     scause, stval
+    // );
 
     match scause {
         // Environment call from U-mode
@@ -93,32 +93,4 @@ fn trap_entry() {
         },
         _ => panic!("Unsupported scause: {:#x}, stval: {:#x}", scause, stval),
     }
-}
-
-#[no_mangle]
-pub extern "C" fn _trap_handler() {
-    unsafe {
-        asm!("csrrw sp, sscratch, sp");
-    }
-
-    // 一定要在处理异常之前保存寄存器
-    let syscall_id: usize;
-    let arg0: usize;
-    let arg1: usize;
-    let arg2: usize;
-    let ra: usize;
-
-    unsafe {
-        // 先保存参数
-        asm!("mv {0}, a0", out(reg) arg0);
-        asm!("mv {0}, a1", out(reg) arg1);
-        asm!("mv {0}, a2", out(reg) arg2);
-        // 然后保存 syscall_id
-        asm!("mv {0}, a7", out(reg) syscall_id);
-        asm!("mv {0}, ra", out(reg) ra);
-    }
-    println!(
-        "syscall_id: {:#x}, arg0: {:#x}, arg1: {:#x}, arg2: {:#x}, ra: {:#x}",
-        syscall_id, arg0, arg1, arg2, ra
-    );
 }

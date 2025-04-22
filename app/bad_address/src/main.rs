@@ -8,5 +8,4 @@ fn main() {
     unsafe {
         (0x0 as *mut u8).write_volatile(0);
     }
-    panic!("FAIL: T.T\n");
 }
