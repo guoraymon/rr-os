@@ -1,12 +1,26 @@
-all: build run
+all: run
 
 build:
-	cargo build --release && \
-	rust-objcopy --strip-all target/riscv64gc-unknown-none-elf/release/os -O binary target/riscv64gc-unknown-none-elf/release/os.bin
+	cargo build --release
 
-run:
+run: build
 	qemu-system-riscv64 \
 		-machine virt \
 		-nographic \
 		-bios default \
-		-kernel target/riscv64gc-unknown-none-elf/release/os.bin
+		-kernel target/riscv64gc-unknown-none-elf/release/os \
+		-d in_asm -D qemu.log
+
+debug: build
+	qemu-system-riscv64 \
+		-machine virt \
+		-nographic \
+		-bios default \
+		-kernel target/riscv64gc-unknown-none-elf/release/os \
+		-s -S
+
+gdb:
+	riscv64-unknown-elf-gdb \
+		-ex 'file target/riscv64gc-unknown-none-elf/release/os' \
+		-ex 'set arch riscv:rv64' \
+		-ex 'target remote localhost:1234'

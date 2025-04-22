@@ -2,7 +2,7 @@ ENTRY(_start)
 
 SECTIONS
 {
-    . = 0x80200000;
+    . = 0x80400000;
 
     .text : ALIGN(4K) {
         *(.text .text.*)
@@ -12,7 +12,7 @@ SECTIONS
         *(.rodata .rodata.*)
     }
 
-    .data 0x80400000 : ALIGN(4K) {
+    .data : ALIGN(4K) {
         *(.data .data.*)
     }
 
