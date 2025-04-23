@@ -7,7 +7,7 @@ mod syscall;
 #[no_mangle]
 #[link_section = ".text.entry"]
 fn _start() -> ! {
-    syscall::sys_exit(main());
+    exit(main());
     unreachable!();
 }
 
@@ -15,6 +15,14 @@ fn _start() -> ! {
 #[linkage = "weak"]
 pub fn main() -> i32 {
     0
+}
+
+pub fn write(fd: usize, buffer: &[u8]) -> isize {
+    syscall::sys_write(fd, buffer)
+}
+
+pub fn exit(xstate: i32) -> isize {
+    syscall::sys_exit(xstate)
 }
 
 #[panic_handler]
