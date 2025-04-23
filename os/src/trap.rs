@@ -1,6 +1,6 @@
 use core::arch::asm;
 
-use crate::{print, println, sys};
+use crate::{batch, print, println, sys};
 
 pub fn init() {
     let stvec_val = trap_handler as usize;
@@ -15,17 +15,18 @@ pub extern "C" fn trap_handler() {
     unsafe {
         core::arch::naked_asm!(
             "addi sp, sp, -2*8",
-            // 保存 sepc 寄存器
-            "csrr t0, sepc",
-            "sd t0, 0(sp)",
+            // 保存 sepc 寄存器（不考虑异常嵌套的情况下可以不保存）
+            // "csrr t0, sepc",
+            // "sd t0, 0(sp)",
             // 保存 ra 寄存器
             "sd x1, 1*8(sp)",
 
             "call {entry}",
 
             // 恢复 sepc 寄存器
-            "ld t0, 0(sp)",
-            "addi t0, t0, 4", // 跳转到 ecall 之后的指令
+            // "ld t0, 0(sp)",
+            "csrr t0, sepc", // sepc 会被硬件设为 ecall 的地址
+            "addi t0, t0, 4", // 通过地址跳转到 ecall 之后的指令
             "csrw sepc, t0",
             // 恢复 ra 寄存器
             "ld x1, 1*8(sp)",
@@ -75,6 +76,16 @@ fn trap_entry() {
     // );
 
     match scause {
+        // Illegal instruction
+        0x2 => {
+            println!("Illegal instruction: {:#x}", stval);
+            batch::next();
+        }
+        // Store/AMO access fault
+        0x7 => {
+            println!("Store/AMO access fault: {:#x}", stval);
+            batch::next();
+        }
         // Environment call from U-mode
         0x8 => match syscall_id {
             64 => match arg0 {
@@ -85,12 +96,15 @@ fn trap_entry() {
                 _ => panic!("Unsupported fd: {}", arg0),
             },
             93 => {
-                sys::shutdown(false);
+                println!("Application exit");
+                batch::next();
             }
             _ => {
-                panic!("Unsupported syscall_id: {:#x}", syscall_id);
+                panic!("Unsupported syscall_id: {}", syscall_id);
             }
         },
-        _ => panic!("Unsupported scause: {:#x}, stval: {:#x}", scause, stval),
+        _ => {
+            panic!("Unsupported scause: {:#x}, stval: {:#x}", scause, stval);
+        }
     }
 }

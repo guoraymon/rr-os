@@ -2,6 +2,9 @@
 #![no_main]
 #![feature(naked_functions)]
 
+use sys::shutdown;
+
+mod batch;
 mod console;
 mod sbi;
 mod sys;
@@ -30,35 +33,10 @@ fn _start() {
     }
 }
 
-#[link_section = ".data"]
-#[no_mangle]
-pub static APP_0: [u8; include_bytes!(
-    "../../app/bad_address/target/riscv64gc-unknown-none-elf/release/bad_address.bin"
-)
-.len()] = *include_bytes!(
-    "../../app/bad_address/target/riscv64gc-unknown-none-elf/release/bad_address.bin"
-);
-
 #[no_mangle]
 fn rust_main() {
     trap::init();
-
-    let app_0_start = APP_0.as_ptr() as usize;
-    println!("app_0_start: {:#x}", app_0_start);
-
-    unsafe {
-        // 写入 sepc 寄存器（跳转地址）
-        core::arch::asm!("csrw sepc, {}", in(reg) app_0_start);
-
-        // 修改 sstatus：清除 SPP 位（使 sret 切换到用户模式）
-        let mut sstatus: usize;
-        core::arch::asm!("csrr {}, sstatus", out(reg) sstatus);
-        sstatus &= !(1 << 8); // SPP = 0
-        core::arch::asm!("csrw sstatus, {}", in(reg) sstatus);
-
-        // 执行 sret，跳转到 user_program
-        core::arch::asm!("sret", options(noreturn));
-    }
+    batch::run();
 }
 
 #[panic_handler]
