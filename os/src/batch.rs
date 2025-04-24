@@ -8,10 +8,10 @@ pub static APPS: [&[u8]; 3] = [
         "../../app/hello_world/target/riscv64gc-unknown-none-elf/release/hello_world.bin"
     ),
     include_bytes!(
-        "../../app/bad_instructions/target/riscv64gc-unknown-none-elf/release/bad_instructions.bin"
+        "../../app/bad_address/target/riscv64gc-unknown-none-elf/release/bad_address.bin"
     ),
     include_bytes!(
-        "../../app/bad_address/target/riscv64gc-unknown-none-elf/release/bad_address.bin"
+        "../../app/bad_instructions/target/riscv64gc-unknown-none-elf/release/bad_instructions.bin"
     ),
 ];
 
@@ -23,15 +23,17 @@ pub fn run() {
             APPS[APP_ID].as_ptr() as usize,
             APPS[APP_ID].len()
         );
+        let start = 0x80400000 + APP_ID * 0x2000;
+        println!("start: {:#x}", start);
         core::ptr::copy_nonoverlapping(
             APPS[APP_ID].as_ptr(),
-            0x80400000 as *mut u8,
+            start as *mut u8,
             APPS[APP_ID].len(),
         );
         core::arch::asm!("fence.i"); // 刷新指令缓存
 
         // 写入 sepc 寄存器（跳转地址）
-        core::arch::asm!("csrw sepc, {}", in(reg) 0x80400000 as usize);
+        core::arch::asm!("csrw sepc, {}", in(reg) start as usize);
 
         // 修改 sstatus：清除 SPP 位（使 sret 切换到用户模式）
         let mut sstatus: usize;
