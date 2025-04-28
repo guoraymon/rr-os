@@ -25,6 +25,10 @@ pub fn exit(xstate: i32) -> isize {
     syscall::sys_exit(xstate)
 }
 
+pub fn yield_() -> isize {
+    syscall::sys_yield()
+}
+
 #[panic_handler]
 fn panic(info: &core::panic::PanicInfo) -> ! {
     if let Some(location) = info.location() {
