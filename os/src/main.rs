@@ -36,18 +36,6 @@ static USER_STACKS: [UserStack; MAX_APP_NUM] = [UserStack {
 }; MAX_APP_NUM];
 
 #[no_mangle]
-#[link_section = ".text.entry"]
-fn _start() {
-    unsafe {
-        core::arch::asm!(
-            "la sp, {kernel_stack}",
-            "call rust_main",
-            kernel_stack = sym KERNEL_STACK,
-        );
-    }
-}
-
-#[no_mangle]
 pub static APPS: [&[u8]; 3] = [
     include_bytes!(
         "../../app/hello_world/target/riscv64gc-unknown-none-elf/release/hello_world.bin"
@@ -59,6 +47,8 @@ pub static APPS: [&[u8]; 3] = [
         "../../app/bad_instructions/target/riscv64gc-unknown-none-elf/release/bad_instructions.bin"
     ),
 ];
+
+core::arch::global_asm!(include_str!("boot.S"));
 
 #[no_mangle]
 fn rust_main() {

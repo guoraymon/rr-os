@@ -5,7 +5,7 @@ SECTIONS {
     . = 0x80200000;
 
     .text : ALIGN(4K) {
-        KEEP(*(.text.entry))
+        KEEP(*(.text.boot))
         *(.text .text.*)
     }
 
