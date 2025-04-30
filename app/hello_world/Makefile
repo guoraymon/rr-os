@@ -19,7 +19,7 @@ clean:
 	cargo clean
 
 bin: build
-	$(OBJCOPY) -O binary $(ELF) $(BIN)
+	$(OBJCOPY) -S -O binary $(ELF) $(BIN)
 
 dump: build
 	$(OBJDUMP) -d $(ELF)

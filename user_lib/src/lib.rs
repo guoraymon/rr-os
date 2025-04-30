@@ -41,6 +41,6 @@ fn panic(info: &core::panic::PanicInfo) -> ! {
     } else {
         println!("Panicked: {}", info.message());
     }
-    syscall::sys_exit(1);
+    syscall::sys_exit(-1);
     unreachable!();
 }

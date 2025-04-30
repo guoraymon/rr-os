@@ -1,7 +1,7 @@
+OUTPUT_ARCH(riscv)
 ENTRY(_start)
 
-SECTIONS
-{
+SECTIONS {
     . = 0x80400000;
 
     .text : ALIGN(4K) {
@@ -17,8 +17,14 @@ SECTIONS
         *(.data .data.*)
     }
 
-    .bss : ALIGN(4K) {
+    .bss (NOLOAD) : ALIGN(4K) {
+        __bss_start = .;
         *(.bss .bss.*)
         *(COMMON)
+        __bss_end = .;
+    }
+
+    /DISCARD/ : {
+        *(.eh_frame)
     }
 }
