@@ -3,7 +3,6 @@ use core::arch::global_asm;
 use crate::{
     println, sys,
     trap::{TrapContext, __restore},
-    APPS, KERNEL_STACK, USER_STACKS,
 };
 
 #[derive(Copy, Clone, PartialEq, Debug)]
@@ -23,15 +22,144 @@ pub struct TaskContext {
 }
 
 #[derive(Copy, Clone)]
-pub struct TaskControlBlock {
+pub struct Task {
     pub status: TaskStatus,
     pub context: TaskContext,
 }
 
 pub struct TaskManager {
     num_app: usize,
-    tasks: [TaskControlBlock; 16],
+    tasks: [Task; 16],
     current_task: usize,
+}
+
+const APP_NUM: usize = 3;
+
+pub static mut TASK_MANAGER: TaskManager = {
+    TaskManager {
+        num_app: APP_NUM,
+        tasks: [Task {
+            status: TaskStatus::UnInit,
+            context: TaskContext {
+                ra: 0,
+                sp: 0,
+                s: [0; 12],
+            },
+        }; 16],
+        current_task: 0,
+    }
+};
+
+const KERNEL_STACK_SIZE: usize = 4096;
+
+#[repr(align(4096))]
+#[derive(Copy, Clone)]
+struct KernelStack {
+    _data: [u8; KERNEL_STACK_SIZE],
+}
+
+impl KernelStack {
+    fn top(&self) -> usize {
+        self as *const _ as usize + KERNEL_STACK_SIZE
+    }
+}
+
+#[link_section = ".kernel_stack"]
+static KERNEL_STACKS: [KernelStack; APP_NUM] = [KernelStack {
+    _data: [0; KERNEL_STACK_SIZE],
+}; APP_NUM];
+
+const USER_STACK_SIZE: usize = 4096;
+
+#[repr(align(4096))]
+#[derive(Copy, Clone)]
+struct UserStack {
+    _data: [u8; USER_STACK_SIZE],
+}
+
+impl UserStack {
+    fn top(&self) -> usize {
+        self as *const _ as usize + USER_STACK_SIZE
+    }
+}
+
+#[link_section = ".user_stack"]
+static USER_STACKS: [UserStack; APP_NUM] = [UserStack {
+    _data: [0; USER_STACK_SIZE],
+}; APP_NUM];
+
+pub fn init() {
+    const APPS: [&[u8]; APP_NUM] = [
+        include_bytes!(
+            "../../app/hello_world/target/riscv64gc-unknown-none-elf/release/hello_world.bin"
+        ),
+        include_bytes!(
+            "../../app/bad_address/target/riscv64gc-unknown-none-elf/release/bad_address.bin"
+        ),
+        include_bytes!(
+            "../../app/bad_instructions/target/riscv64gc-unknown-none-elf/release/bad_instructions.bin"
+        ),
+        // include_bytes!(
+        //     "../../app/yield_a/target/riscv64gc-unknown-none-elf/release/yield_a.bin"
+        // ),
+        // include_bytes!(
+        //     "../../app/yield_b/target/riscv64gc-unknown-none-elf/release/yield_b.bin"
+        // ),
+        // include_bytes!(
+        //     "../../app/yield_c/target/riscv64gc-unknown-none-elf/release/yield_c.bin"
+        // ),
+    ];
+
+    for (i, app) in APPS.iter().enumerate() {
+        println!(
+            "app_{}: {:#x}, len: {:#x}",
+            i,
+            app.as_ptr() as usize,
+            app.len(),
+        );
+
+        let start = 0x80400000 + i * 0x2000;
+        let kernel_stack_ptr = KERNEL_STACKS[i].top();
+        let user_stack_ptr = USER_STACKS[i].top();
+        println!(
+            "start: {:#x}, kernel_stack: {:#x}, user_stack: {:#x}",
+            start, kernel_stack_ptr, user_stack_ptr
+        );
+
+        unsafe {
+            core::ptr::copy_nonoverlapping(APPS[i].as_ptr(), start as *mut u8, APPS[i].len());
+
+            let task = &mut TASK_MANAGER.tasks[i];
+            task.status = TaskStatus::Ready;
+            task.context.ra = __restore as usize;
+            task.context.sp = (|| {
+                let ptr =
+                    (kernel_stack_ptr - core::mem::size_of::<TrapContext>()) as *mut TrapContext;
+                *ptr = TrapContext {
+                    sstatus: (|| {
+                        let mut sstatus: usize;
+                        core::arch::asm!("csrr {}, sstatus", out(reg) sstatus);
+                        sstatus &= !(1 << 8); // SPP = 0
+                        sstatus
+                    })(),
+                    sepc: start as usize,
+                    ra: 0,
+                    sp: user_stack_ptr,
+                    a: [0; 8],
+                };
+                ptr as usize
+            })();
+        }
+    }
+}
+
+global_asm!(include_str!("switch.S"));
+
+extern "C" {
+    pub fn __switch(
+        current_task_context_ptr: *mut TaskContext,
+        next_task_context_ptr: *const TaskContext,
+    );
 }
 
 impl TaskManager {
@@ -57,10 +185,6 @@ impl TaskManager {
 
     fn suspend(&mut self) {
         self.tasks[self.current_task].status = TaskStatus::Ready;
-    }
-
-    fn exit(&mut self) {
-        self.tasks[self.current_task].status = TaskStatus::Exited;
     }
 
     fn find_next_id(&self) -> Option<usize> {
@@ -91,69 +215,9 @@ impl TaskManager {
             sys::shutdown(false);
         }
     }
-}
 
-global_asm!(include_str!("switch.S"));
-
-extern "C" {
-    pub fn __switch(
-        current_task_context_ptr: *mut TaskContext,
-        next_task_context_ptr: *const TaskContext,
-    );
-}
-
-pub static mut TASK_MANAGER: TaskManager = {
-    TaskManager {
-        num_app: APPS.len(),
-        tasks: [TaskControlBlock {
-            status: TaskStatus::UnInit,
-            context: TaskContext {
-                ra: 0,
-                sp: 0,
-                s: [0; 12],
-            },
-        }; 16],
-        current_task: 0,
-    }
-};
-
-pub fn init() {
-    for (i, app) in APPS.iter().enumerate() {
-        let start = 0x80400000 + i * 0x2000;
-        println!(
-            "app_{}: {:#x}, len: {:#x}, start: {:#x}, k_s: {:#x}, u_s: {:#x}",
-            i,
-            app.as_ptr() as usize,
-            app.len(),
-            start,
-            KERNEL_STACK[i].data.as_ptr() as usize,
-            USER_STACKS[i].data.as_ptr() as usize,
-        );
-        unsafe {
-            core::ptr::copy_nonoverlapping(APPS[i].as_ptr(), start as *mut u8, APPS[i].len());
-
-            let task = &mut TASK_MANAGER.tasks[i];
-            task.status = TaskStatus::Ready;
-            task.context.ra = __restore as usize;
-            task.context.sp = (|| {
-                let ptr = (KERNEL_STACK[i].data.as_ptr() as usize
-                    - core::mem::size_of::<TrapContext>())
-                    as *mut TrapContext;
-                *ptr = TrapContext {
-                    sstatus: (|| {
-                        let mut sstatus: usize;
-                        core::arch::asm!("csrr {}, sstatus", out(reg) sstatus);
-                        sstatus &= !(1 << 8); // SPP = 0
-                        sstatus
-                    })(),
-                    sepc: start as usize,
-                    ra: 0,
-                    sp: USER_STACKS[i].data.as_ptr() as usize,
-                    a: [0; 8],
-                };
-                ptr as usize
-            })();
-        }
+    fn exit(&mut self) {
+        self.tasks[self.current_task].status = TaskStatus::Exited;
     }
 }
 

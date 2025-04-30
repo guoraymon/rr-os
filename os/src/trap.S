@@ -19,7 +19,7 @@ __trap:
     sd a6, 10*8(sp)
     sd a7, 11*8(sp)
     mv a0, sp //  a0 is TrapContext
-    call trap_handle
+    call trap_handler
 
 .global __restore
 __restore:

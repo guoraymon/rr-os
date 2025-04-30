@@ -19,7 +19,7 @@ extern "C" {
 }
 
 extern "C" {
-    pub fn __restore(trap_context: *mut TrapContext);
+    pub fn __restore(trap_context: *const TrapContext);
 }
 
 pub fn init() {
@@ -29,7 +29,7 @@ pub fn init() {
 }
 
 #[no_mangle]
-fn trap_handle(trap_context: &mut TrapContext) -> &mut TrapContext {
+fn trap_handler(trap_context: &mut TrapContext) -> &mut TrapContext {
     let mut scause: usize; // Supervisor Cause Register
     let mut stval: usize; // Supervisor Trap Value Register
     unsafe {
@@ -40,7 +40,7 @@ fn trap_handle(trap_context: &mut TrapContext) -> &mut TrapContext {
             out(reg) stval
         );
     }
-    // println!("trap_handle: scause: {:#x}, stval: {:#x}", scause, stval);
+    println!("trap_handle: scause: {:#x}, stval: {:#x}", scause, stval);
 
     match scause {
         // Illegal instruction
@@ -59,10 +59,10 @@ fn trap_handle(trap_context: &mut TrapContext) -> &mut TrapContext {
             let arg0: usize = trap_context.a[0];
             let arg1 = trap_context.a[1];
             let arg2 = trap_context.a[2];
-            // println!(
-            //     "syscall_id: {}, arg0: {:#x}, arg1: {:#x}, arg2: {:#x}",
-            //     syscall_id, arg0, arg1, arg2
-            // );
+            println!(
+                "syscall_id: {}, arg0: {:#x}, arg1: {:#x}, arg2: {:#x}",
+                syscall_id, arg0, arg1, arg2
+            );
 
             trap_context.sepc += 4;
             trap_context.a[0] = match syscall_id {
@@ -90,7 +90,6 @@ fn trap_handle(trap_context: &mut TrapContext) -> &mut TrapContext {
                     panic!("Unsupported syscall_id: {}", syscall_id);
                 }
             };
-            trap_context.a[0] = 1;
         }
         _ => {
             panic!("Unsupported scause: {:#x}, stval: {:#x}", scause, stval);
