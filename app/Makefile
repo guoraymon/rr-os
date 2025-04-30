@@ -1,6 +1,7 @@
-SUBDIRS := hello_world bad_address bad_instructions
+# SUBDIRS := hello_world bad_address bad_instructions
+SUBDIRS := yield_a yield_b yield_c
 BASE := 0x80400000
-OFFSET := 0x2000
+OFFSET := 0x20000
 
 bin:
 	@i=0; \
