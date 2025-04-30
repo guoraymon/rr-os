@@ -1,0 +1,10 @@
+[package]
+name = "yield_a"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+user_lib = { path = "../../user_lib" }
+
+[profile.release]
+panic = "abort"
