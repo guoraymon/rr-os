@@ -5,11 +5,9 @@ use crate::{print, println, task};
 #[repr(C)]
 #[derive(Debug)]
 pub struct TrapContext {
+    pub x: [usize; 32],
     pub sstatus: usize,
     pub sepc: usize,
-    pub ra: usize,
-    pub sp: usize,
-    pub a: [usize; 8],
 }
 
 global_asm!(include_str!("trap.S"));
@@ -40,7 +38,7 @@ fn trap_handler(trap_context: &mut TrapContext) -> &mut TrapContext {
             out(reg) stval
         );
     }
-    println!("trap_handle: scause: {:#x}, stval: {:#x}", scause, stval);
+    // println!("trap_handle: scause: {:#x}, stval: {:#x}", scause, stval);
 
     match scause {
         // Illegal instruction
@@ -55,17 +53,17 @@ fn trap_handler(trap_context: &mut TrapContext) -> &mut TrapContext {
         }
         // Environment call from U-mode
         0x8 => {
-            let syscall_id = trap_context.a[7];
-            let arg0: usize = trap_context.a[0];
-            let arg1 = trap_context.a[1];
-            let arg2 = trap_context.a[2];
-            println!(
-                "syscall_id: {}, arg0: {:#x}, arg1: {:#x}, arg2: {:#x}",
-                syscall_id, arg0, arg1, arg2
-            );
+            let syscall_id = trap_context.x[17];
+            let arg0: usize = trap_context.x[10];
+            let arg1 = trap_context.x[11];
+            let arg2 = trap_context.x[12];
+            // println!(
+            //     "syscall_id: {}, arg0: {:#x}, arg1: {:#x}, arg2: {:#x}",
+            //     syscall_id, arg0, arg1, arg2
+            // );
 
             trap_context.sepc += 4;
-            trap_context.a[0] = match syscall_id {
+            trap_context.x[10] = match syscall_id {
                 64 => match arg0 {
                     1 => {
                         let buffer =

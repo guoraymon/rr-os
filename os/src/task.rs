@@ -50,7 +50,7 @@ pub static mut TASK_MANAGER: TaskManager = {
     }
 };
 
-const KERNEL_STACK_SIZE: usize = 4096;
+const KERNEL_STACK_SIZE: usize = 0x10000;
 
 #[repr(align(4096))]
 #[derive(Copy, Clone)]
@@ -69,7 +69,7 @@ static KERNEL_STACKS: [KernelStack; APP_NUM] = [KernelStack {
     _data: [0; KERNEL_STACK_SIZE],
 }; APP_NUM];
 
-const USER_STACK_SIZE: usize = 4096;
+const USER_STACK_SIZE: usize = 0x10000;
 
 #[repr(align(4096))]
 #[derive(Copy, Clone)]
@@ -90,24 +90,18 @@ static USER_STACKS: [UserStack; APP_NUM] = [UserStack {
 
 pub fn init() {
     const APPS: [&[u8]; APP_NUM] = [
-        include_bytes!(
-            "../../app/hello_world/target/riscv64gc-unknown-none-elf/release/hello_world.bin"
-        ),
-        include_bytes!(
-            "../../app/bad_address/target/riscv64gc-unknown-none-elf/release/bad_address.bin"
-        ),
-        include_bytes!(
-            "../../app/bad_instructions/target/riscv64gc-unknown-none-elf/release/bad_instructions.bin"
-        ),
         // include_bytes!(
-        //     "../../app/yield_a/target/riscv64gc-unknown-none-elf/release/yield_a.bin"
+        //     "../../app/hello_world/target/riscv64gc-unknown-none-elf/release/hello_world.bin"
         // ),
         // include_bytes!(
-        //     "../../app/yield_b/target/riscv64gc-unknown-none-elf/release/yield_b.bin"
+        //     "../../app/bad_address/target/riscv64gc-unknown-none-elf/release/bad_address.bin"
         // ),
         // include_bytes!(
-        //     "../../app/yield_c/target/riscv64gc-unknown-none-elf/release/yield_c.bin"
+        //     "../../app/bad_instructions/target/riscv64gc-unknown-none-elf/release/bad_instructions.bin"
         // ),
+        include_bytes!("../../app/yield_a/target/riscv64gc-unknown-none-elf/release/yield_a.bin"),
+        include_bytes!("../../app/yield_b/target/riscv64gc-unknown-none-elf/release/yield_b.bin"),
+        include_bytes!("../../app/yield_c/target/riscv64gc-unknown-none-elf/release/yield_c.bin"),
     ];
 
     for (i, app) in APPS.iter().enumerate() {
@@ -118,7 +112,7 @@ pub fn init() {
             app.len(),
         );
 
-        let start = 0x80400000 + i * 0x2000;
+        let start = 0x80400000 + i * 0x20000;
         let kernel_stack_ptr = KERNEL_STACKS[i].top();
         let user_stack_ptr = USER_STACKS[i].top();
         println!(
@@ -135,7 +129,9 @@ pub fn init() {
             task.context.sp = (|| {
                 let ptr =
                     (kernel_stack_ptr - core::mem::size_of::<TrapContext>()) as *mut TrapContext;
-                *ptr = TrapContext {
+
+                let mut trap_context = TrapContext {
+                    x: [0; 32],
                     sstatus: (|| {
                         let mut sstatus: usize;
                         core::arch::asm!("csrr {}, sstatus", out(reg) sstatus);
@@ -143,10 +139,10 @@ pub fn init() {
                         sstatus
                     })(),
                     sepc: start as usize,
-                    ra: 0,
-                    sp: user_stack_ptr,
-                    a: [0; 8],
                 };
+                trap_context.x[2] = user_stack_ptr;
+
+                *ptr = trap_context;
                 ptr as usize
             })();
         }
@@ -193,7 +189,12 @@ impl TaskManager {
                 return Some(i);
             }
         }
-        None
+        // if no ready task, try run the current task again
+        if self.tasks[self.current_task].status == TaskStatus::Ready {
+            return Some(self.current_task);
+        } else {
+            return None;
+        }
     }
 
     fn next(&mut self) {
