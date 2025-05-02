@@ -1,5 +1,6 @@
 pub mod dbcn;
 pub mod srst;
+pub mod time;
 
 /// Converts SBI EID from str.
 fn eid_from_str(name: &str) -> u32 {
@@ -13,6 +14,17 @@ fn eid_from_str(name: &str) -> u32 {
 }
 
 fn sbi_call_1(eid: u32, fid: u32, arg0: u32) {
+    unsafe {
+        core::arch::asm!(
+            "ecall",
+            in("a7") eid,
+            in("a6") fid,
+            inlateout("a0") arg0 => _,
+            lateout("a1") _,
+        );
+    }
+}
+fn sbi_call_1_u64(eid: u32, fid: u32, arg0: u64) {
     unsafe {
         core::arch::asm!(
             "ecall",

@@ -1,6 +1,6 @@
 use core::arch::{asm, global_asm};
 
-use crate::{print, println, task};
+use crate::{print, println, riscv, task, timer};
 
 #[repr(C)]
 #[derive(Debug)]
@@ -24,6 +24,12 @@ pub fn init() {
     unsafe {
         asm!("csrw stvec, {}", in(reg) __trap as usize);
     }
+}
+
+/// Enable timer interrupt
+pub fn enable_timer_interrupt() {
+    riscv::enable_supervisor_interrupts();
+    riscv::enable_supervisor_timer_interrupt();
 }
 
 #[no_mangle]
@@ -88,6 +94,12 @@ fn trap_handler(trap_context: &mut TrapContext) -> &mut TrapContext {
                     panic!("Unsupported syscall_id: {}", syscall_id);
                 }
             };
+        }
+        // Timer interrupt
+        0x8000000000000005 => {
+            println!("Timer interrupt");
+            task::suspend_current_and_run_next();
+            timer::set_next_trigger();
         }
         _ => {
             panic!("Unsupported scause: {:#x}, stval: {:#x}", scause, stval);
