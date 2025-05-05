@@ -2,8 +2,13 @@
 #![no_main]
 #![feature(naked_functions)]
 
+use mm::heap_test;
+
+extern crate alloc;
+
 // mod batch;
 mod console;
+mod mm;
 mod riscv;
 mod sbi;
 mod sys;
@@ -15,11 +20,13 @@ core::arch::global_asm!(include_str!("boot.S"));
 
 #[no_mangle]
 fn rust_main() {
-    trap::init();
-    trap::enable_timer_interrupt();
-    timer::set_next_trigger();
-    task::init();
-    task::run();
+    // trap::init();
+    // trap::enable_timer_interrupt();
+    // timer::set_next_trigger();
+    // task::init();
+    // task::run();
+    mm::init();
+    heap_test();
 }
 
 #[panic_handler]
