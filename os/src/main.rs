@@ -2,8 +2,6 @@
 #![no_main]
 #![feature(naked_functions)]
 
-use mm::heap_test;
-
 extern crate alloc;
 
 // mod batch;
@@ -15,11 +13,42 @@ mod sys;
 mod task;
 mod timer;
 mod trap;
+mod utils;
+
+use mm::{frame_allocator::frame_allocator_test, heap_allocator::heap_test};
 
 core::arch::global_asm!(include_str!("boot.S"));
 
 #[no_mangle]
 fn rust_main() {
+    extern "C" {
+        fn __text_start();
+        fn __text_end();
+        fn __rodata_start();
+        fn __rodata_end();
+        fn __data_start();
+        fn __data_end();
+        fn __bss_start();
+        fn __bss_end();
+    }
+    println!("[kernel] Hello, world!");
+    println!(
+        "[kernel] .text [{:#x}, {:#x})",
+        __text_start as usize, __text_end as usize
+    );
+    println!(
+        "[kernel] .rodata [{:#x}, {:#x})",
+        __rodata_start as usize, __rodata_end as usize
+    );
+    println!(
+        "[kernel] .data [{:#x}, {:#x})",
+        __data_start as usize, __data_end as usize
+    );
+    println!(
+        "[kernel] .bss [{:#x}, {:#x})",
+        __bss_start as usize, __bss_end as usize
+    );
+
     // trap::init();
     // trap::enable_timer_interrupt();
     // timer::set_next_trigger();
@@ -27,6 +56,7 @@ fn rust_main() {
     // task::run();
     mm::init();
     heap_test();
+    // frame_allocator_test();
 }
 
 #[panic_handler]

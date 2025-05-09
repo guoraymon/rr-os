@@ -4,17 +4,24 @@ ENTRY(_start)
 SECTIONS {
     . = 0x80200000;
 
+    skernel = .;
     .text : ALIGN(4K) {
+        __text_start = .;
         KEEP(*(.text.boot))
         *(.text .text.*)
+        __text_end = .;
     }
 
     .rodata : ALIGN(4K) {
+        __rodata_start = .;
         *(.rodata .rodata.*)
+        __rodata_end = .;
     }
 
     .data : ALIGN(4K) {
+        __data_start = .;
         *(.data .data.*)
+        __data_end = .;
     }
 
     .bss (NOLOAD) : ALIGN(4K) {
@@ -41,6 +48,7 @@ SECTIONS {
         . += 4096;
         __user_stack_top = .;
     }
+    ekernel = .;
 
     /DISCARD/ : {
         *(.eh_frame)

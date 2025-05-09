@@ -13,7 +13,17 @@ pub struct EarlyAllocatorInner {
 }
 
 impl EarlyAllocator {
-    fn init(&self, start: usize, end: usize) {
+    pub const fn new() -> Self {
+        EarlyAllocator {
+            inner: UnsafeCell::new(EarlyAllocatorInner {
+                start: 0,
+                end: 0,
+                pos: 0,
+            }),
+        }
+    }
+
+    pub fn init(&self, start: usize, end: usize) {
         unsafe {
             *(self.inner.get()) = EarlyAllocatorInner {
                 start,
@@ -40,26 +50,6 @@ unsafe impl GlobalAlloc for EarlyAllocator {
             panic!("invalid dealloc");
         }
         inner.pos -= layout.size();
-    }
-}
-
-#[global_allocator]
-static mut GLOBAL_ALLOCATOR: EarlyAllocator = EarlyAllocator {
-    inner: UnsafeCell::new(EarlyAllocatorInner {
-        start: 0,
-        end: 0,
-        pos: 0,
-    }),
-};
-
-static mut HEAP_SPACE: [u8; 0x200_0000] = [0; 0x200_0000];
-
-pub fn init() {
-    unsafe {
-        GLOBAL_ALLOCATOR.init(
-            HEAP_SPACE.as_ptr() as usize,
-            HEAP_SPACE.as_ptr() as usize + HEAP_SPACE.len(),
-        );
     }
 }
 

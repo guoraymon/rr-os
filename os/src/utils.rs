@@ -1,8 +1,31 @@
 use core::{
-    cell::UnsafeCell, fmt, ops::{Deref, DerefMut}, sync::atomic::{AtomicBool, Ordering}
+    cell::{self, RefCell, UnsafeCell},
+    fmt,
+    ops::{Deref, DerefMut},
+    sync::atomic::{AtomicBool, Ordering},
 };
 
-use crate::println;
+pub struct SyncRefCell<T> {
+    inner: RefCell<T>,
+}
+
+unsafe impl<T> Sync for SyncRefCell<T> {}
+
+impl<T> SyncRefCell<T> {
+    pub const fn new(val: T) -> Self {
+        Self {
+            inner: RefCell::new(val),
+        }
+    }
+
+    pub fn borrow(&self) -> cell::Ref<'_, T> {
+        self.inner.borrow()
+    }
+
+    pub fn borrow_mut(&self) -> cell::RefMut<'_, T> {
+        self.inner.borrow_mut()
+    }
+}
 
 pub struct Once<T> {
     initialized: AtomicBool,
@@ -74,3 +97,34 @@ macro_rules! lazy_static {
         )*
     };
 }
+
+pub struct LazyLock<T> {
+    init: fn() -> T,
+    once: Once<T>,
+}
+
+impl<T> LazyLock<T> {
+    pub const fn new(init: fn() -> T) -> Self {
+        LazyLock {
+            init,
+            once: Once::new(),
+        }
+    }
+}
+
+impl<T> Deref for LazyLock<T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        self.once.call_once(self.init)
+    }
+}
+
+impl<T> DerefMut for LazyLock<T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.once.call_once(self.init);
+        unsafe { (*self.once.value.get()).as_mut().unwrap() }
+    }
+}
+
+unsafe impl<T: Send + Sync> Sync for LazyLock<T> {}
