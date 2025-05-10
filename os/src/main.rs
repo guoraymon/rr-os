@@ -2,6 +2,7 @@
 #![no_main]
 #![feature(naked_functions)]
 
+#[macro_use]
 extern crate alloc;
 
 // mod batch;
@@ -56,7 +57,7 @@ fn rust_main() {
     // task::run();
     mm::init();
     heap_test();
-    // frame_allocator_test();
+    frame_allocator_test();
 }
 
 #[panic_handler]

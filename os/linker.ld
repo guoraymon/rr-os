@@ -4,7 +4,7 @@ ENTRY(_start)
 SECTIONS {
     . = 0x80200000;
 
-    skernel = .;
+    __kernel_start = .;
     .text : ALIGN(4K) {
         __text_start = .;
         KEEP(*(.text.boot))
@@ -48,7 +48,7 @@ SECTIONS {
         . += 4096;
         __user_stack_top = .;
     }
-    ekernel = .;
+    __kernel_end = .;
 
     /DISCARD/ : {
         *(.eh_frame)

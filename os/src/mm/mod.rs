@@ -27,22 +27,22 @@ pub fn heap_init() {
 }
 
 extern "C" {
-    fn ekernel();
+    fn __kernel_end();
 }
 
 static FRAME_ALLOCATOR: LazyLock<SyncRefCell<FrameAllocator>> = LazyLock::new(|| {
     SyncRefCell::new({
         FrameAllocator::new(
-            PhysAddr::new(ekernel as usize).ceil(),
+            PhysAddr::new(__kernel_end as usize).ceil(),
             PhysAddr::new(0x8880_0000).floor(),
         )
     })
 });
 
-static KERNEL_SPACE: LazyLock<MemorySet> = LazyLock::new(|| MemorySet::new());
+static KERNEL_SPACE: LazyLock<MemorySet> = LazyLock::new(|| MemorySet::new_kernel());
 
 pub fn frame_init() {
-    // KERNEL_SPACE.activate();
+    KERNEL_SPACE.activate();
 }
 
 pub fn frame_alloc() -> FrameTracker {
