@@ -42,7 +42,7 @@ impl From<usize> for PhysPageNum {
 }
 
 impl PhysPageNum {
-    pub fn get_page_table_entries(&self) -> &mut [PageTableEntry] {
+    pub fn get_pte_array(&self) -> &mut [PageTableEntry] {
         unsafe {
             core::slice::from_raw_parts_mut(PhysAddr::from(*self).0 as *mut PageTableEntry, 512)
         }

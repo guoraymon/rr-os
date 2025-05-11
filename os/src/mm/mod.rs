@@ -1,7 +1,7 @@
 mod address;
 pub mod frame_allocator;
 pub mod heap_allocator;
-mod memory_set;
+pub mod memory_set;
 mod page_table;
 
 use address::{PhysAddr, PhysPageNum};
@@ -39,12 +39,6 @@ static FRAME_ALLOCATOR: LazyLock<SyncRefCell<FrameAllocator>> = LazyLock::new(||
     })
 });
 
-static KERNEL_SPACE: LazyLock<MemorySet> = LazyLock::new(|| MemorySet::new_kernel());
-
-pub fn frame_init() {
-    KERNEL_SPACE.activate();
-}
-
 pub fn frame_alloc() -> FrameTracker {
     FrameTracker::new(FRAME_ALLOCATOR.borrow_mut().alloc())
 }
@@ -53,7 +47,9 @@ pub fn frame_dealloc(ppn: PhysPageNum) {
     FRAME_ALLOCATOR.borrow_mut().dealloc(ppn);
 }
 
+static KERNEL_SPACE: LazyLock<MemorySet> = LazyLock::new(|| MemorySet::new_kernel());
+
 pub fn init() {
     heap_init();
-    frame_init();
+    // KERNEL_SPACE.activate();
 }

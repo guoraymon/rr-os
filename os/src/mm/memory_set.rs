@@ -1,14 +1,26 @@
 use alloc::vec::Vec;
 
-use crate::println;
+use crate::{mm::KERNEL_SPACE, println};
 
 use super::{
     address::{PhysPageNum, VirtAddr, VirtPageNum},
     page_table::{PageTable, PageTableEntryFlags},
 };
 
+extern "C" {
+    fn __text_start();
+    fn __text_end();
+    fn __rodata_start();
+    fn __rodata_end();
+    fn __data_start();
+    fn __data_end();
+    fn __bss_start();
+    fn __bss_end();
+    fn __kernel_end();
+}
+
 pub struct MemorySet {
-    page_table: PageTable,
+    pub page_table: PageTable,
     areas: Vec<MapArea>,
 }
 
@@ -21,18 +33,6 @@ impl MemorySet {
     }
 
     pub fn new_kernel() -> Self {
-        extern "C" {
-            fn __text_start();
-            fn __text_end();
-            fn __rodata_start();
-            fn __rodata_end();
-            fn __data_start();
-            fn __data_end();
-            fn __bss_start();
-            fn __bss_end();
-            fn __kernel_end();
-        }
-
         let mut memory_set = Self::new();
         // map kernel sections
         println!(
@@ -91,15 +91,21 @@ impl MemorySet {
             None,
         );
 
-        println!("mapping physical memory");
-        memory_set.push(
-            MapArea::new(
-                VirtAddr::from(__kernel_end as usize),
-                VirtAddr::from(0x8880_0000),
-                MapPermission::R | MapPermission::W,
-            ),
-            None,
-        );
+
+        // println!(
+        //     "physical [{:#x}, {:#x})",
+        //     __kernel_end as usize, 0x8880_0000 as usize
+        // );
+        // println!("mapping physical memory");
+        // memory_set.push(
+        //     MapArea::new(
+        //         VirtAddr::from(__kernel_end as usize),
+        //         VirtAddr::from(0x8880_0000),
+        //         MapPermission::R | MapPermission::W,
+        //     ),
+        //     None,
+        // );
+        
         memory_set
     }
 
@@ -143,6 +149,12 @@ impl MapArea {
                 PhysPageNum::from(vpn),
                 self.map_perm.to_pte_flags(),
             );
+        }
+    }
+
+    fn unmap(&self, page_table: &mut PageTable) {
+        for vpn in (self.vpn_range.0).0..(self.vpn_range.1).0 {
+            page_table.unmap(VirtPageNum::from(vpn));
         }
     }
 }
@@ -190,4 +202,26 @@ impl core::ops::BitOr for MapPermission {
     fn bitor(self, rhs: Self) -> Self::Output {
         Self(self.0 | rhs.0)
     }
+}
+
+pub fn remap_test() {
+    let mid_text: VirtAddr = ((__text_start as usize + __text_start as usize) / 2).into();
+    assert!(!KERNEL_SPACE
+        .page_table
+        .translate(mid_text.floor())
+        .is_writeable(),);
+
+    let mid_rodata: VirtAddr = ((__rodata_end as usize + __rodata_end as usize) / 2).into();
+    assert!(!KERNEL_SPACE
+        .page_table
+        .translate(mid_rodata.floor())
+        .is_writeable(),);
+
+    let mid_data: VirtAddr = ((__data_start as usize + __data_end as usize) / 2).into();
+    assert!(!KERNEL_SPACE
+        .page_table
+        .translate(mid_data.floor())
+        .is_executable(),);
+
+    println!("remap_test passed!");
 }

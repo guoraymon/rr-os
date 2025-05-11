@@ -2,6 +2,8 @@ use core::panic;
 
 use alloc::vec::Vec;
 
+use crate::println;
+
 use super::{
     address::{PhysPageNum, VirtPageNum, VA_WIDTH_SV39},
     frame_alloc,
@@ -29,11 +31,11 @@ impl PageTable {
         let indexes = vpn.indexes();
         let mut ppn = self.root_ppn;
 
-        for (level, &idx) in indexes.iter().enumerate() {
-            let pte_array = ppn.get_page_table_entries();
+        for (_, &idx) in indexes.iter().enumerate() {
+            let pte_array = ppn.get_pte_array();
             let pte = &mut pte_array[idx];
 
-            if level == 2 {
+            if pte.is_leaf() {
                 if !pte.is_valid() {
                     *pte = PageTableEntry::new(target_ppn, flags | PageTableEntryFlags::V);
                     return;
@@ -52,15 +54,15 @@ impl PageTable {
         let indexes = vpn.indexes();
         let mut ppn = self.root_ppn;
 
-        for (level, &idx) in indexes.iter().enumerate() {
-            let pte_array = ppn.get_page_table_entries();
+        for (_, &idx) in indexes.iter().enumerate() {
+            let pte_array = ppn.get_pte_array();
             let pte = &mut pte_array[idx];
 
             if !pte.is_valid() {
                 panic!("unmap failed: vpn {:?} not mapped", vpn.0);
             }
 
-            if level == 2 {
+            if pte.is_leaf() {
                 *pte = PageTableEntry::empty();
                 return;
             }
@@ -68,6 +70,28 @@ impl PageTable {
             ppn = pte.ppn();
         }
         panic!("unmap failed: invalid page table traversal");
+    }
+
+    pub fn translate(&self, vpn: VirtPageNum) -> PageTableEntry {
+        let indexes = vpn.indexes();
+        let mut ppn = self.root_ppn;
+
+        for (level, &idx) in indexes.iter().enumerate() {
+            let pte_array = ppn.get_pte_array();
+            let pte = &pte_array[idx];
+
+            if !pte.is_valid() {
+                panic!("Invalid PTE during translation at level {}", level);
+            }
+
+            if pte.is_leaf() {
+                return *pte;
+            }
+
+            ppn = pte.ppn();
+        }
+
+        panic!("Translation failed: incomplete page table traversal");
     }
 }
 
@@ -93,8 +117,28 @@ impl PageTableEntry {
         PhysPageNum::from(raw_ppn)
     }
 
+    pub fn is_leaf(&self) -> bool {
+        self.is_readable() || self.is_writeable() || self.is_executable()
+    }
+
     pub fn is_valid(&self) -> bool {
-        self.bits & 1 != 0
+        self.bits & 0b1 != 0
+    }
+
+    pub fn is_readable(&self) -> bool {
+        self.bits & 0b01 != 0
+    }
+
+    pub fn is_writeable(&self) -> bool {
+        self.bits & 0b10 != 0
+    }
+
+    pub fn is_executable(&self) -> bool {
+        self.bits & 0b100 != 0
+    }
+
+    pub fn is_user(&self) -> bool {
+        self.bits & 0b1000 != 0
     }
 }
 
@@ -116,5 +160,12 @@ impl core::ops::BitOr for PageTableEntryFlags {
     type Output = Self;
     fn bitor(self, rhs: Self) -> Self::Output {
         Self(self.0 | rhs.0)
+    }
+}
+
+impl core::ops::BitAnd for PageTableEntryFlags {
+    type Output = Self;
+    fn bitand(self, rhs: Self) -> Self::Output {
+        Self(self.0 & rhs.0)
     }
 }

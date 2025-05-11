@@ -16,7 +16,8 @@ mod timer;
 mod trap;
 mod utils;
 
-use mm::{frame_allocator::frame_allocator_test, heap_allocator::heap_test};
+use mm::{frame_allocator::frame_allocator_test, heap_allocator::heap_test, memory_set::remap_test};
+use sys::shutdown;
 
 core::arch::global_asm!(include_str!("boot.S"));
 
@@ -58,6 +59,8 @@ fn rust_main() {
     mm::init();
     heap_test();
     frame_allocator_test();
+    remap_test();
+    shutdown(false);
 }
 
 #[panic_handler]
