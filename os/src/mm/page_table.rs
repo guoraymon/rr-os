@@ -3,7 +3,7 @@ use core::panic;
 use alloc::vec::Vec;
 
 use super::{
-    address::{PhysPageNum, VirtPageNum},
+    address::{PhysPageNum, VirtPageNum, VA_WIDTH_SV39},
     frame_alloc,
     frame_allocator::FrameTracker,
 };
@@ -61,7 +61,7 @@ impl PageTable {
             }
 
             if level == 2 {
-                *pte = PageTableEntry { bits: 0 };
+                *pte = PageTableEntry::empty();
                 return;
             }
 
@@ -71,23 +71,30 @@ impl PageTable {
     }
 }
 
+#[repr(C)]
+#[derive(Copy, Clone)]
 pub struct PageTableEntry {
     pub bits: usize,
 }
 
 impl PageTableEntry {
+    pub fn empty() -> Self {
+        PageTableEntry { bits: 0 }
+    }
+
     pub fn new(ppn: PhysPageNum, flags: PageTableEntryFlags) -> Self {
         PageTableEntry {
             bits: ppn.0 << 10 | flags.0 as usize,
         }
     }
 
-    pub fn is_valid(&self) -> bool {
-        self.bits & 1 != 0
+    pub fn ppn(&self) -> PhysPageNum {
+        let raw_ppn = (self.bits >> 10) & ((1 << VA_WIDTH_SV39) - 1);
+        PhysPageNum::from(raw_ppn)
     }
 
-    pub fn ppn(&self) -> PhysPageNum {
-        PhysPageNum::from(self.bits >> 10)
+    pub fn is_valid(&self) -> bool {
+        self.bits & 1 != 0
     }
 }
 

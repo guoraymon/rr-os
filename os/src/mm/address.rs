@@ -1,7 +1,9 @@
 use super::page_table::{PageTableEntry, PAGE_SIZE, PAGE_SIZE_BITS};
 
-const PA_WIDTH_SV39: usize = 56;
-const VA_WIDTH_SV39: usize = 39;
+pub const PA_WIDTH_SV39: usize = 56;
+pub const PPN_WIDTH_SV39: usize = PA_WIDTH_SV39 - PAGE_SIZE_BITS;
+pub const VA_WIDTH_SV39: usize = 39;
+pub const VPN_WIDTH_SV39: usize = VA_WIDTH_SV39 - PAGE_SIZE_BITS;
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct PhysAddr(pub usize);
@@ -34,6 +36,7 @@ pub struct PhysPageNum(pub usize);
 
 impl From<usize> for PhysPageNum {
     fn from(value: usize) -> Self {
+        assert!(value < (1 << PPN_WIDTH_SV39), "PhysPageNum out  of range!");
         Self(value)
     }
 }
@@ -71,6 +74,7 @@ pub struct VirtPageNum(pub usize);
 
 impl From<usize> for VirtPageNum {
     fn from(value: usize) -> Self {
+        assert!(value < (1 << VPN_WIDTH_SV39), "VirtPageNum out of range");
         Self(value)
     }
 }
