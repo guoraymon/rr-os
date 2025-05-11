@@ -1,8 +1,7 @@
-use super::page_table::PageTableEntry;
+use super::page_table::{PageTableEntry, PAGE_SIZE, PAGE_SIZE_BITS};
 
 const PA_WIDTH_SV39: usize = 56;
 const VA_WIDTH_SV39: usize = 39;
-pub const PAGE_SIZE: usize = 0x1000;
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct PhysAddr(pub usize);
@@ -11,6 +10,12 @@ impl From<usize> for PhysAddr {
     fn from(value: usize) -> Self {
         assert!(value < (1 << PA_WIDTH_SV39), "PhysAddr out of range");
         Self(value)
+    }
+}
+
+impl From<PhysPageNum> for PhysAddr {
+    fn from(value: PhysPageNum) -> Self {
+        Self(value.0 << PAGE_SIZE_BITS)
     }
 }
 
@@ -34,12 +39,10 @@ impl From<usize> for PhysPageNum {
 }
 
 impl PhysPageNum {
-    pub fn addr(&self) -> PhysAddr {
-        PhysAddr(self.0 * PAGE_SIZE)
-    }
-
     pub fn get_page_table_entries(&self) -> &mut [PageTableEntry] {
-        unsafe { core::slice::from_raw_parts_mut(self.addr().0 as *mut PageTableEntry, 512) }
+        unsafe {
+            core::slice::from_raw_parts_mut(PhysAddr::from(*self).0 as *mut PageTableEntry, 512)
+        }
     }
 }
 

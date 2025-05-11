@@ -5,8 +5,9 @@ use alloc::vec::Vec;
 use crate::{mm::frame_alloc, println};
 
 use super::{
-    address::{PhysPageNum, PAGE_SIZE},
+    address::{PhysAddr, PhysPageNum},
     frame_dealloc,
+    page_table::PAGE_SIZE,
 };
 
 pub struct FrameAllocator {
@@ -55,7 +56,7 @@ pub struct FrameTracker {
 
 impl FrameTracker {
     pub fn new(ppn: PhysPageNum) -> Self {
-        let pa = ppn.addr();
+        let pa = PhysAddr::from(ppn);
         unsafe {
             (pa.0 as *mut u8).write_bytes(0, PAGE_SIZE);
         }
