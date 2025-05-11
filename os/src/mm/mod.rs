@@ -33,8 +33,8 @@ extern "C" {
 static FRAME_ALLOCATOR: LazyLock<SyncRefCell<FrameAllocator>> = LazyLock::new(|| {
     SyncRefCell::new({
         FrameAllocator::new(
-            PhysAddr::new(__kernel_end as usize).ceil(),
-            PhysAddr::new(0x8880_0000).floor(),
+            PhysAddr::from(__kernel_end as usize).ceil(),
+            PhysAddr::from(0x8880_0000).floor(),
         )
     })
 });

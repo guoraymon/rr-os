@@ -30,7 +30,7 @@ impl FrameAllocator {
             ppn
         } else if self.current < self.end {
             let current = self.current;
-            self.current = PhysPageNum::new(current.value + 1);
+            self.current = PhysPageNum::from(current.0 + 1);
             current
         } else {
             panic!("FrameAllocator: alloc failed");
@@ -57,7 +57,7 @@ impl FrameTracker {
     pub fn new(ppn: PhysPageNum) -> Self {
         let pa = ppn.addr();
         unsafe {
-            (pa.value as *mut u8).write_bytes(0, PAGE_SIZE);
+            (pa.0 as *mut u8).write_bytes(0, PAGE_SIZE);
         }
         Self { ppn }
     }
@@ -65,7 +65,7 @@ impl FrameTracker {
 
 impl Debug for FrameTracker {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        f.write_fmt(format_args!("FrameTracker: PPN={:#x}", self.ppn.value))
+        f.write_fmt(format_args!("FrameTracker: PPN={:#x}", self.ppn.0))
     }
 }
 

@@ -54,7 +54,7 @@ impl PageTable {
             let pte = &mut pte_array[idx];
 
             if !pte.is_valid() {
-                panic!("unmap failed: vpn {:?} not mapped", vpn.value);
+                panic!("unmap failed: vpn {:?} not mapped", vpn.0);
             }
 
             if level == 2 {
@@ -75,7 +75,7 @@ pub struct PageTableEntry {
 impl PageTableEntry {
     pub fn new(ppn: PhysPageNum, flags: PageTableEntryFlags) -> Self {
         PageTableEntry {
-            bits: ppn.value << 10 | flags.0 as usize,
+            bits: ppn.0 << 10 | flags.0 as usize,
         }
     }
 
@@ -84,9 +84,7 @@ impl PageTableEntry {
     }
 
     pub fn ppn(&self) -> PhysPageNum {
-        PhysPageNum {
-            value: self.bits >> 10,
-        }
+        PhysPageNum::from(self.bits >> 10)
     }
 }
 

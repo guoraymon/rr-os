@@ -42,8 +42,8 @@ impl MemorySet {
         println!("mapping .text section");
         memory_set.push(
             MapArea::new(
-                VirtAddr::new(__text_start as usize),
-                VirtAddr::new(__text_end as usize),
+                VirtAddr::from(__text_start as usize),
+                VirtAddr::from(__text_end as usize),
                 MapPermission::R | MapPermission::X,
             ),
             None,
@@ -56,8 +56,8 @@ impl MemorySet {
         println!("mapping .rodata section");
         memory_set.push(
             MapArea::new(
-                VirtAddr::new(__rodata_start as usize),
-                VirtAddr::new(__rodata_end as usize),
+                VirtAddr::from(__rodata_start as usize),
+                VirtAddr::from(__rodata_end as usize),
                 MapPermission::R,
             ),
             None,
@@ -70,8 +70,8 @@ impl MemorySet {
         println!("mapping .data section");
         memory_set.push(
             MapArea::new(
-                VirtAddr::new(__data_start as usize),
-                VirtAddr::new(__data_end as usize),
+                VirtAddr::from(__data_start as usize),
+                VirtAddr::from(__data_end as usize),
                 MapPermission::R | MapPermission::W,
             ),
             None,
@@ -84,8 +84,8 @@ impl MemorySet {
         println!("mapping .bss section");
         memory_set.push(
             MapArea::new(
-                VirtAddr::new(__data_start as usize),
-                VirtAddr::new(__data_end as usize),
+                VirtAddr::from(__data_start as usize),
+                VirtAddr::from(__data_end as usize),
                 MapPermission::R | MapPermission::W,
             ),
             None,
@@ -94,8 +94,8 @@ impl MemorySet {
         println!("mapping physical memory");
         memory_set.push(
             MapArea::new(
-                VirtAddr::new(__kernel_end as usize),
-                VirtAddr::new(0x8880_0000),
+                VirtAddr::from(__kernel_end as usize),
+                VirtAddr::from(0x8880_0000),
                 MapPermission::R | MapPermission::W,
             ),
             None,
@@ -113,7 +113,7 @@ impl MemorySet {
 
     pub fn activate(&self) {
         let root_ppn = self.page_table.root_ppn;
-        let satp = (8 << 60) | (root_ppn.value >> 12);
+        let satp = (8 << 60) | (root_ppn.0 >> 12);
         unsafe {
             core::arch::asm!("csrw satp, {}", in(reg) satp);
             core::arch::asm!("sfence.vma");
@@ -137,10 +137,10 @@ impl MapArea {
     }
 
     fn map(&self, page_table: &mut PageTable) {
-        for vpn in self.vpn_range.0.value..self.vpn_range.1.value {
+        for vpn in (self.vpn_range.0).0..(self.vpn_range.1).0 {
             page_table.map(
-                VirtPageNum::new(vpn),
-                PhysPageNum::new(vpn),
+                VirtPageNum::from(vpn),
+                PhysPageNum::from(vpn),
                 self.map_perm.to_pte_flags(),
             );
         }
