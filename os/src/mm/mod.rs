@@ -11,6 +11,8 @@ use memory_set::MemorySet;
 
 use crate::utils::{LazyLock, SyncRefCell};
 
+pub const MEMORY_END: usize = 0x8800_0000;
+
 #[global_allocator]
 static mut HEAP_ALLOCATOR: EarlyAllocator = EarlyAllocator::new();
 
@@ -34,7 +36,7 @@ static FRAME_ALLOCATOR: LazyLock<SyncRefCell<FrameAllocator>> = LazyLock::new(||
     SyncRefCell::new({
         FrameAllocator::new(
             PhysAddr::from(__kernel_end as usize).ceil(),
-            PhysAddr::from(0x8880_0000).floor(),
+            PhysAddr::from(MEMORY_END).floor(),
         )
     })
 });
@@ -51,5 +53,5 @@ static KERNEL_SPACE: LazyLock<MemorySet> = LazyLock::new(|| MemorySet::new_kerne
 
 pub fn init() {
     heap_init();
-    // KERNEL_SPACE.activate();
+    KERNEL_SPACE.activate();
 }

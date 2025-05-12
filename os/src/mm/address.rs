@@ -82,9 +82,9 @@ impl From<usize> for VirtPageNum {
 impl VirtPageNum {
     pub fn indexes(&self) -> [usize; 3] {
         [
-            (self.0) & 0x1ff,
-            (self.0 >> 9) & 0x1ff,
-            (self.0 >> 18) & 0x1ff,
+            (self.0) & 0x1ff, // VPN[0]
+            (self.0 >> 9) & 0x1ff, // VPN[1]
+            (self.0 >> 18) & 0x1ff, // VPN[2]
         ]
     }
 }

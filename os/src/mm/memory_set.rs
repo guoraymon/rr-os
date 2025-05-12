@@ -1,6 +1,9 @@
 use alloc::vec::Vec;
 
-use crate::{mm::KERNEL_SPACE, println};
+use crate::{
+    mm::{KERNEL_SPACE, MEMORY_END},
+    println,
+};
 
 use super::{
     address::{PhysPageNum, VirtAddr, VirtPageNum},
@@ -84,28 +87,27 @@ impl MemorySet {
         println!("mapping .bss section");
         memory_set.push(
             MapArea::new(
-                VirtAddr::from(__data_start as usize),
-                VirtAddr::from(__data_end as usize),
+                VirtAddr::from(__bss_start as usize),
+                VirtAddr::from(__bss_end as usize),
                 MapPermission::R | MapPermission::W,
             ),
             None,
         );
 
+        println!(
+            "physical [{:#x}, {:#x})",
+            __kernel_end as usize, MEMORY_END as usize
+        );
+        println!("mapping physical memory");
+        memory_set.push(
+            MapArea::new(
+                VirtAddr::from(__kernel_end as usize),
+                VirtAddr::from(MEMORY_END),
+                MapPermission::R | MapPermission::W,
+            ),
+            None,
+        );
 
-        // println!(
-        //     "physical [{:#x}, {:#x})",
-        //     __kernel_end as usize, 0x8880_0000 as usize
-        // );
-        // println!("mapping physical memory");
-        // memory_set.push(
-        //     MapArea::new(
-        //         VirtAddr::from(__kernel_end as usize),
-        //         VirtAddr::from(0x8880_0000),
-        //         MapPermission::R | MapPermission::W,
-        //     ),
-        //     None,
-        // );
-        
         memory_set
     }
 
@@ -119,11 +121,15 @@ impl MemorySet {
 
     pub fn activate(&self) {
         let root_ppn = self.page_table.root_ppn;
-        let satp = (8 << 60) | (root_ppn.0 >> 12);
+        let satp = (8 << 60) | root_ppn.0;
         unsafe {
-            core::arch::asm!("csrw satp, {}", in(reg) satp);
-            core::arch::asm!("sfence.vma");
+            core::arch::asm!(
+                "csrw satp, {satp}",
+                "sfence.vma",
+                satp = in(reg) satp,
+            );
         }
+        println!("satp activated!")
     }
 }
 
@@ -143,7 +149,10 @@ impl MapArea {
     }
 
     fn map(&self, page_table: &mut PageTable) {
-        for vpn in (self.vpn_range.0).0..(self.vpn_range.1).0 {
+        let start_vpn = self.vpn_range.0;
+        let end_vpn = self.vpn_range.1;
+        for vpn in start_vpn.0..end_vpn.0 {
+            // println!("mapping vpn {:#x}", vpn);
             page_table.map(
                 VirtPageNum::from(vpn),
                 PhysPageNum::from(vpn),

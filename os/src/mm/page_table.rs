@@ -2,8 +2,6 @@ use core::panic;
 
 use alloc::vec::Vec;
 
-use crate::println;
-
 use super::{
     address::{PhysPageNum, VirtPageNum, VA_WIDTH_SV39},
     frame_alloc,
@@ -30,17 +28,16 @@ impl PageTable {
     pub fn map(&mut self, vpn: VirtPageNum, target_ppn: PhysPageNum, flags: PageTableEntryFlags) {
         let indexes = vpn.indexes();
         let mut ppn = self.root_ppn;
-
-        for (_, &idx) in indexes.iter().enumerate() {
+        for (level, idx) in indexes.iter().rev().enumerate() {
             let pte_array = ppn.get_pte_array();
-            let pte = &mut pte_array[idx];
+            let pte = &mut pte_array[*idx];
 
-            if pte.is_leaf() {
-                if !pte.is_valid() {
-                    *pte = PageTableEntry::new(target_ppn, flags | PageTableEntryFlags::V);
-                    return;
-                }
-            } else if !pte.is_valid() {
+            if level == 2 {
+                *pte = PageTableEntry::new(target_ppn, flags | PageTableEntryFlags::V);
+                return;
+            }
+
+            if !pte.is_valid() {
                 let frame = frame_alloc();
                 *pte = PageTableEntry::new(frame.ppn, PageTableEntryFlags::V);
                 self.frames.push(frame);
@@ -54,7 +51,7 @@ impl PageTable {
         let indexes = vpn.indexes();
         let mut ppn = self.root_ppn;
 
-        for (_, &idx) in indexes.iter().enumerate() {
+        for (_, &idx) in indexes.iter().rev().enumerate() {
             let pte_array = ppn.get_pte_array();
             let pte = &mut pte_array[idx];
 
@@ -76,7 +73,7 @@ impl PageTable {
         let indexes = vpn.indexes();
         let mut ppn = self.root_ppn;
 
-        for (level, &idx) in indexes.iter().enumerate() {
+        for (level, &idx) in indexes.iter().rev().enumerate() {
             let pte_array = ppn.get_pte_array();
             let pte = &pte_array[idx];
 
@@ -122,23 +119,23 @@ impl PageTableEntry {
     }
 
     pub fn is_valid(&self) -> bool {
-        self.bits & 0b1 != 0
+        self.bits & (1 << 0) != 0
     }
-
+    
     pub fn is_readable(&self) -> bool {
-        self.bits & 0b01 != 0
+        self.bits & (1 << 1) != 0
     }
-
+    
     pub fn is_writeable(&self) -> bool {
-        self.bits & 0b10 != 0
+        self.bits & (1 << 2) != 0
     }
-
+    
     pub fn is_executable(&self) -> bool {
-        self.bits & 0b100 != 0
+        self.bits & (1 << 3) != 0
     }
-
+    
     pub fn is_user(&self) -> bool {
-        self.bits & 0b1000 != 0
+        self.bits & (1 << 4) != 0
     }
 }
 
